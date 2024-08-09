@@ -3,14 +3,14 @@
 
 ## Description
 
-`convert-json` is a utility for converting JSON data to various formats such as CSV, YAML, XML, XLSX, and TXT. This tool provides an easy way to transform JSON data into different file types for various use cases such as data sharing, reporting, and more.
+`convert-json-util` is a utility for converting JSON data to various formats such as CSV, YAML, XML, XLSX, and TXT. This tool provides an easy way to transform JSON data into different file types for various use cases such as data sharing, reporting, and more.
 
 ## Installation
 
 To install the package, use npm:
 
 ```sh
-npm install convert-json
+npm install convert-json-util
 ```
 
 ## Usage
@@ -20,7 +20,7 @@ npm install convert-json
 To use the `convertJson` function, you need to import it from the package:
 
 ```typescript
-import { convertJson } from 'convert-json';
+import { convertJson } from 'convert-json-util';
 import { ZodSchema } from 'zod';
 ```
 
@@ -50,7 +50,7 @@ The function returns an object with the following properties:
 #### Example 1: Converting JSON to CSV and saving to a file
 
 ```typescript
-import { convertJson } from 'convert-json';
+import { convertJson } from 'convert-json-util';
 import { z } from 'zod';
 
 // Define a Zod schema for the JSON data
@@ -77,7 +77,7 @@ if (result.success) {
 #### Example 2: Converting JSON to YAML without saving to a file
 
 ```typescript
-import { convertJson } from 'convert-json';
+import { convertJson } from 'convert-json-util';
 import { z } from 'zod';
 
 // Define a Zod schema for the JSON data
