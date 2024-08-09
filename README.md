@@ -3,7 +3,7 @@
 
 ## Description
 
-`convert-json-util` is a utility for converting JSON data to various formats such as CSV, YAML, XML, XLSX, and TXT. This tool provides an easy way to transform JSON data into different file types for various use cases such as data sharing, reporting, and more.
+`convert-json-util` is a versatile utility for converting JSON data into various formats such as CSV, YAML, XML, XLSX, and TXT. This tool is designed to make it easy to transform JSON data into different file types for use in data sharing, reporting, and more. It supports both [Zod](https://github.com/colinhacks/zod) schemas and custom schemas for validation and conversion.
 
 ## Installation
 
@@ -17,7 +17,7 @@ npm install convert-json-util
 
 ### Importing the Module
 
-To use the `convertJson` function, you need to import it from the package:
+To use the `convertJson` function, import it from the package:
 
 ```typescript
 import { convertJson } from 'convert-json-util';
@@ -27,13 +27,13 @@ import { ZodSchema } from 'zod';
 ### Function Signature
 
 ```typescript
-convertJson(jsonData: any, schema: ZodSchema<any>, saveToFile?: boolean, fileName?: string, fileType?: 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt'): { success: boolean, fileData?: string | Buffer, errors?: string[] }
+convertJson(jsonData: any, schema: any, saveToFile?: boolean, fileName?: string, fileType?: 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt'): { success: boolean, fileData?: string | Buffer, errors?: string[] }
 ```
 
 ### Parameters
 
 - **jsonData**: The JSON data to be converted. It can be an object or an array of objects.
-- **schema**: The Zod schema used to validate the JSON data.
+- **schema**: The schema used to validate the JSON data. This can be a Zod schema or any custom schema with `parse` or `safeParse` methods.
 - **saveToFile** (optional): A boolean indicating whether to save the converted data to a file. Default is `false`.
 - **fileName** (optional): The name of the file to save the converted data. Default is `"data"`.
 - **fileType** (optional): The type of file to convert the data to. Options are `'csv'`, `'yaml'`, `'xml'`, `'xlsx'`, and `'txt'`. Default is `'csv'`.
@@ -47,7 +47,7 @@ The function returns an object with the following properties:
 
 ### Examples
 
-#### Example 1: Converting JSON to CSV and saving to a file
+#### Example 1: Converting JSON to CSV with Zod schema and saving to a file
 
 ```typescript
 import { convertJson } from 'convert-json-util';
@@ -74,27 +74,48 @@ if (result.success) {
 }
 ```
 
-#### Example 2: Converting JSON to YAML without saving to a file
+#### Example 2: Converting JSON to YAML without saving to a file using a custom schema
 
 ```typescript
 import { convertJson } from 'convert-json-util';
-import { z } from 'zod';
 
-// Define a Zod schema for the JSON data
-const schema = z.object({
-    name: z.string(),
-    age: z.number(),
-    email: z.string().email()
-});
+// Define a custom schema for the JSON data
+const customSchema = {
+    parse: (jsonData: any) => {
+        try {
+            const data = JSON.parse(JSON.stringify(jsonData));
+            return { success: true, data };
+        } catch (error) {
+            return { success: false, errors: [{ path: [], message: (error as Error).message }] };
+        }
+    }
+};
 
 const jsonData = { name: "John Doe", age: 30, email: "john.doe@example.com" };
 
-const result = convertJson(jsonData, schema, false, "user", "yaml");
+const result = convertJson(jsonData, customSchema, false, "user", "yaml");
 
 if (result.success) {
     console.log("YAML data:", result.fileData);
 } else {
     console.error("Error converting JSON to YAML:", result.errors);
+}
+```
+
+### Handling Errors
+
+If an error occurs during conversion, the function will:
+- Print the error message to the console using `console.error`.
+- Include the error details in the returned object under the `errors` property.
+- Throw an error to stop further execution, allowing it to be caught and handled by the calling code.
+
+Example:
+
+```typescript
+try {
+    const result = convertJson(invalidJsonData, schema, true, "invalidData", "csv");
+} catch (error) {
+    console.error("An error occurred during conversion:", error);
 }
 ```
 

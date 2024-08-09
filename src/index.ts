@@ -1,27 +1,29 @@
 import fs from 'fs';
-import path from 'path';
+import path, { parse } from 'path';
 import { stringify } from 'yaml';
 import { Builder } from 'xml2js';
-import {write,utils} from 'xlsx';
-import { ZodSchema } from 'zod';
+import { write, utils } from 'xlsx';
 
-type FileType = 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt' ;
+type FileType = 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt';
 
-function convertJson(jsonData: any, schema: ZodSchema<any>, saveToFile: boolean = false, fileName: string = "data", fileType: FileType = "csv") {
-    const result = byFileType(jsonData, schema, fileType);
-    if (saveToFile && result.success) {
-        const outputDir = path.resolve('files');
-        if (!fs.existsSync(outputDir)) {
-            fs.mkdirSync(outputDir);
+function convertJson<T>(jsonData: any, schema: any, saveToFile: boolean = false, fileName: string = "data", fileType: FileType = "csv") {
+    try {
+        const result = byFileType(jsonData, schema, fileType);
+        if (saveToFile && result.success) {
+            const outputDir = path.resolve('files');
+            if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
+            const outputFilePath = getUniqueFilePath(outputDir, `${fileName}.${fileType}`);
+            fs.writeFileSync(outputFilePath, result.fileData);
+            console.log(`${fileType.toUpperCase()} file saved to`, outputFilePath);
         }
-        const outputFilePath = getUniqueFilePath(outputDir, `${fileName}.${fileType}`);
-        fs.writeFileSync(outputFilePath, result.fileData);
-        console.log(`${fileType.toUpperCase()} file saved to`, outputFilePath);
+        return result;
+    } catch (error) {
+        console.error("An error occurred during conversion:", error);
+        throw error;
     }
-    return result;
 }
 
-function byFileType(jsonData: any, schema: any, fileType: FileType) {
+function byFileType<T>(jsonData: any, schema: any, fileType: FileType) {
     switch (fileType) {
         case 'csv':
             return jsonToCsv(jsonData, schema);
@@ -52,10 +54,10 @@ function getUniqueFilePath(directory: string, fileName: string): string {
     return path.join(directory, uniqueFileName);
 }
 
-function parseWithSchema(schema: any, jsonData: any) {
-    if (schema.safeParse) {
+function parseWithSchema<T>(schema: any, jsonData: any) {
+    if (typeof schema.safeParse === 'function') {
         return schema.safeParse(jsonData);
-    } else if (schema.parse) {
+    } else if (typeof schema.parse === 'function') {
         try {
             const data = schema.parse(jsonData);
             return { success: true, data };
@@ -67,13 +69,23 @@ function parseWithSchema(schema: any, jsonData: any) {
             }
         }
     } else {
-        return { success: false, errors: ['Unsupported schema type'] };
+        // במקרה של סכמה מותאמת אישית שאין לה safeParse או parse
+        try {
+            const data = JSON.parse(JSON.stringify(jsonData));
+            return { success: true, data };
+        } catch (error: any) {
+            return { success: false, errors: [{ path: [], message: error.message }] };
+        }
     }
 }
 
-function jsonToCsv(jsonData: any, schema: any) {
+function jsonToCsv<T>(jsonData: any, schema: any) {
     const parseData = parseWithSchema(schema, jsonData);
-    if (!parseData.success) return { success: false, errors: formatErrors(parseData.errors) };
+    if (!parseData.success) {
+        const formattedErrors = formatErrors(parseData.errors);
+        console.error("Error converting JSON to CSV:", formattedErrors);
+        throw new Error(`CSV Conversion Error: ${formattedErrors.join(", ")}`);
+    }
 
     const { data } = parseData;
 
@@ -83,11 +95,15 @@ function jsonToCsv(jsonData: any, schema: any) {
     } else if (typeof data === 'object' && data !== null) {
         dataArray = [data];
     } else {
-        return { success: false, errors: ['JSON data is neither an array nor an object'] };
+        const errorMessage = 'JSON data is neither an array nor an object';
+        console.error(errorMessage);
+        throw new Error(errorMessage);
     }
 
     if (dataArray.length === 0) {
-        return { success: false, errors: ['JSON data array is empty'] };
+        const errorMessage = 'JSON data array is empty';
+        console.error(errorMessage);
+        throw new Error(errorMessage);
     }
 
     const headers = extractHeaders(dataArray);
@@ -109,9 +125,13 @@ function jsonToCsv(jsonData: any, schema: any) {
     return { success: true, fileData: csvData };
 }
 
-function jsonToYaml(jsonData: any, schema: any) {
+function jsonToYaml<T>(jsonData: any, schema: any) {
     const parseData = parseWithSchema(schema, jsonData);
-    if (!parseData.success) return { success: false, errors: formatErrors(parseData.errors) };
+    if (!parseData.success) {
+        const formattedErrors = formatErrors(parseData.errors);
+        console.error("Error converting JSON to YAML:", formattedErrors);
+        throw new Error(`YAML Conversion Error: ${formattedErrors.join(", ")}`);
+    }
 
     const { data } = parseData;
     const yamlData = stringify(data);
@@ -119,9 +139,13 @@ function jsonToYaml(jsonData: any, schema: any) {
     return { success: true, fileData: yamlData };
 }
 
-function jsonToXml(jsonData: any, schema: any) {
+function jsonToXml<T>(jsonData: any, schema: any) {
     const parseData = parseWithSchema(schema, jsonData);
-    if (!parseData.success) return { success: false, errors: formatErrors(parseData.errors) };
+    if (!parseData.success) {
+        const formattedErrors = formatErrors(parseData.errors);
+        console.error("Error converting JSON to XML:", formattedErrors);
+        throw new Error(`XML Conversion Error: ${formattedErrors.join(", ")}`);
+    }
 
     const { data } = parseData;
     const builder = new Builder();
@@ -130,9 +154,13 @@ function jsonToXml(jsonData: any, schema: any) {
     return { success: true, fileData: xmlData };
 }
 
-function jsonToXlsx(jsonData: any, schema: any) {
+function jsonToXlsx<T>(jsonData: any, schema: any) {
     const parseData = parseWithSchema(schema, jsonData);
-    if (!parseData.success) return { success: false, errors: formatErrors(parseData.errors) };
+    if (!parseData.success) {
+        const formattedErrors = formatErrors(parseData.errors);
+        console.error("Error converting JSON to XLSX:", formattedErrors);
+        throw new Error(`XLSX Conversion Error: ${formattedErrors.join(", ")}`);
+    }
 
     const { data } = parseData;
     const dataArray = Array.isArray(data) ? data : [data];
@@ -144,9 +172,13 @@ function jsonToXlsx(jsonData: any, schema: any) {
     return { success: true, fileData: xlsxData };
 }
 
-function jsonToTxt(jsonData: any, schema: any) {
+function jsonToTxt<T>(jsonData: any, schema: any) {
     const parseData = parseWithSchema(schema, jsonData);
-    if (!parseData.success) return { success: false, errors: formatErrors(parseData.errors) };
+    if (!parseData.success) {
+        const formattedErrors = formatErrors(parseData.errors);
+        console.error("Error converting JSON to TXT:", formattedErrors);
+        throw new Error(`TXT Conversion Error: ${formattedErrors.join(", ")}`);
+    }
 
     const { data } = parseData;
 
@@ -156,11 +188,15 @@ function jsonToTxt(jsonData: any, schema: any) {
     } else if (typeof data === 'object' && data !== null) {
         dataArray = [data];
     } else {
-        return { success: false, errors: ['JSON data is neither an array nor an object'] };
+        const errorMessage = 'JSON data is neither an array nor an object';
+        console.error(errorMessage);
+        throw new Error(errorMessage);
     }
 
     if (dataArray.length === 0) {
-        return { success: false, errors: ['JSON data array is empty'] };
+        const errorMessage = 'JSON data array is empty';
+        console.error(errorMessage);
+        throw new Error(errorMessage);
     }
 
     // Convert the JSON data to a nicely formatted string
@@ -169,7 +205,9 @@ function jsonToTxt(jsonData: any, schema: any) {
     return { success: true, fileData: txtData };
 }
 
+
 function formatErrors(errors: any) {
+    if (!errors) return ["Unknown error occurred! try checking your JSON"];
     return errors.map((err: any) => {
         const path = err.path.join('.');
         const message = err.message;
