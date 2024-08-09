@@ -6,7 +6,7 @@ import { write, utils } from 'xlsx';
 
 type FileType = 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt';
 
-function convertJson<T>(jsonData: any, schema: any, saveToFile: boolean = false, fileName: string = "data", fileType: FileType = "csv") {
+function convertJson<T>(jsonData: any, schema: any, saveToFile: boolean = false, fileName: string = "data", fileType: FileType = "txt") {
     try {
         const result = byFileType(jsonData, schema, fileType);
         if (saveToFile && result.success) {

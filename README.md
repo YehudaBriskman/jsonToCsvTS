@@ -36,7 +36,7 @@ convertJson(jsonData: any, schema: any, saveToFile?: boolean, fileName?: string,
 - **schema**: The schema used to validate the JSON data. This can be a Zod schema or any custom schema with `parse` or `safeParse` methods.
 - **saveToFile** (optional): A boolean indicating whether to save the converted data to a file. Default is `false`.
 - **fileName** (optional): The name of the file to save the converted data. Default is `"data"`.
-- **fileType** (optional): The type of file to convert the data to. Options are `'csv'`, `'yaml'`, `'xml'`, `'xlsx'`, and `'txt'`. Default is `'csv'`.
+- **fileType** (optional): The type of file to convert the data to. Options are `'csv'`, `'yaml'`, `'xml'`, `'xlsx'`, and `'txt'`. Default is `'txt'`.
 
 ### Return Value
 
