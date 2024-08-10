@@ -36,7 +36,7 @@ function byFileType<T>(jsonData: any, schema: any, fileType: FileType) {
         case 'txt':
             return jsonToTxt(jsonData, schema);
         default:
-            return jsonToCsv(jsonData, schema);
+            return jsonToTxt(jsonData, schema);
     }
 }
 
