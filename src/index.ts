@@ -1,5 +1,5 @@
 import fs from 'fs';
-import path, { parse } from 'path';
+import path from 'path';
 import { stringify } from 'yaml';
 import { Builder } from 'xml2js';
 import { write, utils } from 'xlsx';
@@ -69,7 +69,6 @@ function parseWithSchema<T>(schema: any, jsonData: any) {
             }
         }
     } else {
-        // במקרה של סכמה מותאמת אישית שאין לה safeParse או parse
         try {
             const data = JSON.parse(JSON.stringify(jsonData));
             return { success: true, data };
@@ -164,7 +163,7 @@ function jsonToXlsx<T>(jsonData: any, schema: any) {
 
     const { data } = parseData;
     const dataArray = Array.isArray(data) ? data : [data];
-    const worksheet = utils.json_to_sheet(dataArray);  // Use the array of objects
+    const worksheet = utils.json_to_sheet(dataArray);
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, 'Sheet1');
     const xlsxData = write(workbook, { type: 'buffer', bookType: 'xlsx' });
@@ -199,7 +198,6 @@ function jsonToTxt<T>(jsonData: any, schema: any) {
         throw new Error(errorMessage);
     }
 
-    // Convert the JSON data to a nicely formatted string
     const txtData = JSON.stringify(dataArray, null, 2);
 
     return { success: true, fileData: txtData };
