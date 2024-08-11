@@ -3,7 +3,7 @@
 
 ## Description
 
-`convert-json-util` is a versatile utility for converting JSON data into various formats such as CSV, YAML, XML, XLSX, and TXT. This tool is designed to make it easy to transform JSON data into different file types for use in data sharing, reporting, and more. It supports both [Zod](https://github.com/colinhacks/zod) schemas and custom schemas for validation and conversion.
+`convert-json-util` is a versatile utility for converting JSON data into various formats such as CSV, YAML, XML, XLSX, and TXT. This tool is designed to make it easy to transform JSON data into different file types for use in data sharing, reporting, and more. It supports validation using both [Zod](https://github.com/colinhacks/zod) schemas and custom schemas, and also allows conversion without any validation if no schema is provided.
 
 ## Installation
 
@@ -27,13 +27,13 @@ import { ZodSchema } from 'zod';
 ### Function Signature
 
 ```typescript
-convertJson(jsonData: any, schema: any, saveToFile?: boolean, fileName?: string, fileType?: 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt'): { success: boolean, fileData?: string | Buffer, errors?: string[] }
+convertJson(jsonData: any, schema?: any, saveToFile?: boolean, fileName?: string, fileType?: 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt'): { success: boolean, fileData?: string | Buffer, errors?: string[] }
 ```
 
 ### Parameters
 
 - **jsonData**: The JSON data to be converted. It can be an object or an array of objects.
-- **schema**: The schema used to validate the JSON data. This can be a Zod schema or any custom schema with `parse` or `safeParse` methods.
+- **schema** (optional): The schema used to validate the JSON data. This can be a Zod schema, any custom schema with `parse`, `safeParse`, or `validate` methods, or it can be omitted entirely for conversion without validation.
 - **saveToFile** (optional): A boolean indicating whether to save the converted data to a file. Default is `false`.
 - **fileName** (optional): The name of the file to save the converted data. Default is `"data"`.
 - **fileType** (optional): The type of file to convert the data to. Options are `'csv'`, `'yaml'`, `'xml'`, `'xlsx'`, and `'txt'`. Default is `'txt'`.
@@ -43,7 +43,6 @@ convertJson(jsonData: any, schema: any, saveToFile?: boolean, fileName?: string,
 The function returns an object with the following properties:
 - **success**: A boolean indicating whether the conversion was successful.
 - **fileData** (optional): The converted data as a string or Buffer. This is only present if `success` is `true`.
-- **errors** (optional): An array of error messages. This is only present if `success` is `false`.
 
 ### Examples
 
@@ -66,12 +65,7 @@ const jsonData = [
 ];
 
 const result = convertJson(jsonData, schema, true, "users", "csv");
-
-if (result.success) {
-    console.log("CSV file saved successfully.");
-} else {
-    console.error("Error converting JSON to CSV:", result.errors);
-}
+console.log(result);
 ```
 
 #### Example 2: Converting JSON to YAML without saving to a file using a custom schema
@@ -81,43 +75,48 @@ import { convertJson } from 'convert-json-util';
 
 // Define a custom schema for the JSON data
 const customSchema = {
-    parse: (jsonData: any) => {
-        try {
-            const data = JSON.parse(JSON.stringify(jsonData));
-            return { success: true, data };
-        } catch (error) {
-            return { success: false, errors: [{ path: [], message: (error as Error).message }] };
+    validate: (data: any) => {
+        const errors: string[] = [];
+        if (typeof data.name !== 'string') {
+            errors.push('Invalid type for name. Expected string.');
         }
+        if (typeof data.age !== 'number') {
+            errors.push('Invalid type for age. Expected number.');
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (typeof data.email !== 'string' || !emailRegex.test(data.email)) {
+            errors.push('Invalid email format.');
+        }
+        if (errors.length > 0) {
+            return { success: false, errors };
+        }
+        return { success: true, data };
     }
 };
 
 const jsonData = { name: "John Doe", age: 30, email: "john.doe@example.com" };
 
 const result = convertJson(jsonData, customSchema, false, "user", "yaml");
+console.log(result);
+```
 
-if (result.success) {
-    console.log("YAML data:", result.fileData);
-} else {
-    console.error("Error converting JSON to YAML:", result.errors);
-}
+#### Example 3: Converting JSON to TXT without any validation
+
+```typescript
+import { convertJson } from 'convert-json-util';
+
+const jsonData = { name: "John Doe", age: 30, email: "john.doe@example.com" };
+
+const result = convertJson(jsonData, null, false, "user", "txt");
+console.log(result);
 ```
 
 ### Handling Errors
 
 If an error occurs during conversion, the function will:
 - Print the error message to the console using `console.error`.
-- Include the error details in the returned object under the `errors` property.
 - Throw an error to stop further execution, allowing it to be caught and handled by the calling code.
 
-Example:
-
-```typescript
-try {
-    const result = convertJson(invalidJsonData, schema, true, "invalidData", "csv");
-} catch (error) {
-    console.error("An error occurred during conversion:", error);
-}
-```
 
 ## Supported File Types
 
