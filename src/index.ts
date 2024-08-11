@@ -202,7 +202,6 @@ function jsonToTxt<T>(jsonData: any, schema: any) {
     return { success: true, fileData: txtData };
 }
 
-
 function formatErrors(errors: any) {
     if (!errors) return ["Unknown error occurred! try checking your JSON"];
     return errors.map((err: any) => {
