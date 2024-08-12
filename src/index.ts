@@ -6,7 +6,7 @@ import { write, utils } from 'xlsx';
 
 type FileType = 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt';
 
-function convertJson<T>(jsonData: any, schema: any, saveToFile: boolean = false, fileName: string = "data", fileType: FileType = "txt") {
+function convertJson<T>(jsonData: any, schema: any = null, saveToFile: boolean = false, fileName: string = "data", fileType: FileType = "txt") {
     try {
         const result = byFileType(jsonData, schema, fileType);
         if (saveToFile && result.success) {
@@ -55,8 +55,16 @@ function getUniqueFilePath(directory: string, fileName: string): string {
 }
 
 function parseWithSchema<T>(schema: any, jsonData: any) {
+    if (!schema) {
+        return { success: true, data: jsonData };
+    }
+
     if (typeof schema.safeParse === 'function') {
-        return schema.safeParse(jsonData);
+        const result = schema.safeParse(jsonData);
+        if (!result.success) {
+            return { success: false, errors: result.error.errors.map((err: any) => ({ path: err.path, message: err.message })) };
+        }
+        return { success: true, data: result.data };
     } else if (typeof schema.parse === 'function') {
         try {
             const data = schema.parse(jsonData);
@@ -68,6 +76,12 @@ function parseWithSchema<T>(schema: any, jsonData: any) {
                 return { success: false, errors: [{ path: [], message: 'An unknown error occurred' }] };
             }
         }
+    } else if (typeof schema.validate === 'function') {
+        const validationResult = schema.validate(jsonData);
+        if (!validationResult.success) {
+            return { success: false, errors: validationResult.errors.map((error: string) => ({ path: [], message: error })) };
+        }
+        return { success: true, data: validationResult.data };
     } else {
         try {
             const data = JSON.parse(JSON.stringify(jsonData));
@@ -202,12 +216,11 @@ function jsonToTxt<T>(jsonData: any, schema: any) {
     return { success: true, fileData: txtData };
 }
 
-
 function formatErrors(errors: any) {
-    if (!errors) return ["Unknown error occurred! try checking your JSON"];
+    if (!errors || errors.length === 0) return ["Unknown error occurred! try checking your JSON"];
     return errors.map((err: any) => {
-        const path = err.path.join('.');
-        const message = err.message;
+        const path = err.path && err.path.length > 0 ? err.path.join('.') : 'unknown path';
+        const message = err.message || 'No message provided';
         return `Validation error at "${path}": ${message}`;
     });
 }

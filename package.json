@@ -1,6 +1,6 @@
 {
   "name": "convert-json-util",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "A utility for converting JSON data to various formats",
   "main": "dist/index.js",
   "scripts": {
