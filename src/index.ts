@@ -4,7 +4,7 @@ import { stringify } from 'yaml';
 import { Builder } from 'xml2js';
 import { write, utils } from 'xlsx';
 
-type FileType = 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt';
+type FileType = 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt' | 'json';
 
 function convertJson<T>(jsonData: any, schema: any = null, saveToFile: boolean = false, fileName: string = "data", fileType: FileType = "txt") {
     try {
@@ -35,6 +35,8 @@ function byFileType<T>(jsonData: any, schema: any, fileType: FileType) {
             return jsonToXlsx(jsonData, schema);
         case 'txt':
             return jsonToTxt(jsonData, schema);
+        case 'json':
+            return jsonToJaon(jsonData, schema);
         default:
             return jsonToTxt(jsonData, schema);
     }
@@ -214,6 +216,16 @@ function jsonToTxt<T>(jsonData: any, schema: any) {
     const txtData = JSON.stringify(dataArray, null, 2);
 
     return { success: true, fileData: txtData };
+}
+
+function jsonToJaon<T>(jsonData: any, schema: any) {
+    const parseData = parseWithSchema(schema, jsonData);
+    if (!parseData.success) {
+        const formattedErrors = formatErrors(parseData.errors);
+        console.error("Error converting JSON to JAON:", formattedErrors);
+        throw new Error(`JAON Conversion Error: ${formattedErrors.join(", ")}`);
+    }
+    return { success: true, fileData: parseData.data };
 }
 
 function formatErrors(errors: any) {
