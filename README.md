@@ -1,4 +1,4 @@
-```markdown
+
 # Convert JSON Utility
 
 ## Description
@@ -27,7 +27,13 @@ import { ZodSchema } from 'zod';
 ### Function Signature
 
 ```typescript
-convertJson(jsonData: any, schema?: any, saveToFile?: boolean, fileName?: string, fileType?: 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt'): { success: boolean, fileData?: string | Buffer, errors?: string[] }
+convertJson({
+    jsonData: any, 
+    schema?: any, 
+    saveToFile?: boolean, 
+    fileName?: string, 
+    fileType?: 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt'
+}): { success: boolean, fileData?: string | Buffer, errors?: string[] }
 ```
 
 ### Parameters
@@ -43,6 +49,7 @@ convertJson(jsonData: any, schema?: any, saveToFile?: boolean, fileName?: string
 The function returns an object with the following properties:
 - **success**: A boolean indicating whether the conversion was successful.
 - **fileData** (optional): The converted data as a string or Buffer. This is only present if `success` is `true`.
+- **errors** (optional): An array of error messages, present if `success` is `false`.
 
 ### Examples
 
@@ -64,7 +71,13 @@ const jsonData = [
     { name: "Jane Doe", age: 25, email: "jane.doe@example.com" }
 ];
 
-const result = convertJson(jsonData, schema, true, "users", "csv");
+const result = convertJson({ 
+    jsonData, 
+    schema, 
+    saveToFile: true, 
+    fileName: "users", 
+    fileType: "csv" 
+});
 console.log(result);
 ```
 
@@ -96,7 +109,11 @@ const customSchema = {
 
 const jsonData = { name: "John Doe", age: 30, email: "john.doe@example.com" };
 
-const result = convertJson(jsonData, customSchema, false, "user", "yaml");
+const result = convertJson({ 
+    jsonData, 
+    schema: customSchema, 
+    fileType: "yaml" 
+});
 console.log(result);
 ```
 
@@ -107,7 +124,7 @@ import { convertJson } from 'convert-json-util';
 
 const jsonData = { name: "John Doe", age: 30, email: "john.doe@example.com" };
 
-const result = convertJson(jsonData, null, false, "user", "txt");
+const result = convertJson({ jsonData, fileType: "txt" });
 console.log(result);
 ```
 
@@ -115,10 +132,9 @@ console.log(result);
 
 If an error occurs during conversion, the function will:
 - Print the error message to the console using `console.error`.
-- Throw an error to stop further execution, allowing it to be caught and handled by the calling code.
+- Return an object with `success: false` and an `errors` array detailing the issues.
 
-
-## Supported File Types
+### Supported File Types
 
 - **CSV**: Comma-separated values, useful for spreadsheets and data analysis.
 - **YAML**: A human-readable data serialization format.
@@ -129,4 +145,3 @@ If an error occurs during conversion, the function will:
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-```
