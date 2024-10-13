@@ -3,7 +3,7 @@
 
 ## Description
 
-`convert-json-util` is a versatile utility for converting JSON data into various formats such as CSV, YAML, XML, XLSX, and TXT. This tool is designed to make it easy to transform JSON data into different file types for use in data sharing, reporting, and more. It supports validation using both [Zod](https://github.com/colinhacks/zod) schemas and custom schemas, and also allows conversion without any validation if no schema is provided.
+`convert-json-util` is a versatile utility for converting JSON data into various formats such as CSV, YAML, XML, XLSX, and TXT. This tool is designed to make it easy to transform JSON data into different file types for use in data sharing, reporting, and more. It supports validation using custom schemas, and also allows conversion without any validation if no schema is provided. Additionally, it supports converting JSON data without saving it to a file.
 
 ## Installation
 
@@ -21,7 +21,6 @@ To use the `convertJson` function, import it from the package:
 
 ```typescript
 import { convertJson } from 'convert-json-util';
-import { ZodSchema } from 'zod';
 ```
 
 ### Function Signature
@@ -32,17 +31,17 @@ convertJson({
     schema?: any, 
     saveToFile?: boolean, 
     fileName?: string, 
-    fileType?: 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt'
+    fileType?: 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt' | 'json'
 }): { success: boolean, fileData?: string | Buffer, errors?: string[] }
 ```
 
 ### Parameters
 
 - **jsonData**: The JSON data to be converted. It can be an object or an array of objects.
-- **schema** (optional): The schema used to validate the JSON data. This can be a Zod schema, any custom schema with `parse`, `safeParse`, or `validate` methods, or it can be omitted entirely for conversion without validation.
+- **schema** (optional): The schema used to validate the JSON data. This can be any custom schema with `parse`, `safeParse`, or `validate` methods, or it can be omitted entirely for conversion without validation.
 - **saveToFile** (optional): A boolean indicating whether to save the converted data to a file. Default is `false`.
 - **fileName** (optional): The name of the file to save the converted data. Default is `"data"`.
-- **fileType** (optional): The type of file to convert the data to. Options are `'csv'`, `'yaml'`, `'xml'`, `'xlsx'`, and `'txt'`. Default is `'txt'`.
+- **fileType** (optional): The type of file to convert the data to. Options are `'csv'`, `'yaml'`, `'xml'`, `'xlsx'`, `'txt'`, and `'json'`. Default is `'txt'`.
 
 ### Return Value
 
@@ -53,35 +52,7 @@ The function returns an object with the following properties:
 
 ### Examples
 
-#### Example 1: Converting JSON to CSV with Zod schema and saving to a file
-
-```typescript
-import { convertJson } from 'convert-json-util';
-import { z } from 'zod';
-
-// Define a Zod schema for the JSON data
-const schema = z.object({
-    name: z.string(),
-    age: z.number(),
-    email: z.string().email()
-});
-
-const jsonData = [
-    { name: "John Doe", age: 30, email: "john.doe@example.com" },
-    { name: "Jane Doe", age: 25, email: "jane.doe@example.com" }
-];
-
-const result = convertJson({ 
-    jsonData, 
-    schema, 
-    saveToFile: true, 
-    fileName: "users", 
-    fileType: "csv" 
-});
-console.log(result);
-```
-
-#### Example 2: Converting JSON to YAML without saving to a file using a custom schema
+#### Example 1: Converting JSON to CSV with validation and saving to a file
 
 ```typescript
 import { convertJson } from 'convert-json-util';
@@ -107,11 +78,30 @@ const customSchema = {
     }
 };
 
-const jsonData = { name: "John Doe", age: 30, email: "john.doe@example.com" };
+const jsonData = [
+    { name: "John Doe", age: 30, email: "john.doe@example.com" },
+    { name: "Jane Doe", age: 25, email: "jane.doe@example.com" }
+];
 
 const result = convertJson({ 
     jsonData, 
     schema: customSchema, 
+    saveToFile: true, 
+    fileName: "users", 
+    fileType: "csv" 
+});
+console.log(result);
+```
+
+#### Example 2: Converting JSON to YAML without saving to a file or schema
+
+```typescript
+import { convertJson } from 'convert-json-util';
+
+const jsonData = { name: "John Doe", age: 30, email: "john.doe@example.com" };
+
+const result = convertJson({ 
+    jsonData, 
     fileType: "yaml" 
 });
 console.log(result);
@@ -128,6 +118,17 @@ const result = convertJson({ jsonData, fileType: "txt" });
 console.log(result);
 ```
 
+#### Example 4: Printing JSON without any conversion
+
+```typescript
+import { convertJson } from 'convert-json-util';
+
+const jsonData = { name: "John Doe", age: 30, email: "john.doe@example.com" };
+
+const result = convertJson({ jsonData, fileType: "json" });
+console.log(result);
+```
+
 ### Handling Errors
 
 If an error occurs during conversion, the function will:
@@ -141,6 +142,7 @@ If an error occurs during conversion, the function will:
 - **XML**: Extensible Markup Language, useful for structured data exchange.
 - **XLSX**: Excel spreadsheet format, useful for advanced data analysis and reporting.
 - **TXT**: Plain text format, useful for simple data storage and sharing.
+- **JSON**: Standard JSON format for data exchange and storage.
 
 ## License
 
