@@ -1,14 +1,19 @@
 import fs from 'fs';
 import path from 'path';
-import { stringify } from 'yaml';
-import { Builder } from 'xml2js';
-import { write, utils } from 'xlsx';
 
 type FileType = 'csv' | 'yaml' | 'xml' | 'xlsx' | 'txt' | 'json';
 
-function convertJson<T>(jsonData: any, schema: any = null, saveToFile: boolean = false, fileName: string = "data", fileType: FileType = "txt") {
+interface ConvertJsonOptions {
+    jsonData: any;
+    schema?: any;
+    saveToFile?: boolean;
+    fileName?: string;
+    fileType?: FileType;
+}
+
+function convertJson<T>({ jsonData, schema = null, saveToFile = false, fileName = "data", fileType = "txt" }: ConvertJsonOptions) {
     try {
-        const result = byFileType(jsonData, schema, fileType);
+        const result = byFileType(jsonData, schema, fileType, fileName);
         if (saveToFile && result.success) {
             const outputDir = path.resolve('files');
             if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
@@ -16,6 +21,7 @@ function convertJson<T>(jsonData: any, schema: any = null, saveToFile: boolean =
             fs.writeFileSync(outputFilePath, result.fileData);
             console.log(`${fileType.toUpperCase()} file saved to`, outputFilePath);
         }
+
         return result;
     } catch (error) {
         console.error("An error occurred during conversion:", error);
@@ -23,16 +29,16 @@ function convertJson<T>(jsonData: any, schema: any = null, saveToFile: boolean =
     }
 }
 
-function byFileType<T>(jsonData: any, schema: any, fileType: FileType) {
+function byFileType<T>(jsonData: any, schema: any, fileType: FileType, fileName: string) {
     switch (fileType) {
         case 'csv':
             return jsonToCsv(jsonData, schema);
         case 'yaml':
             return jsonToYaml(jsonData, schema);
         case 'xml':
-            return jsonToXml(jsonData, schema);
+            return jsonToXml(jsonData, schema, fileName);
         case 'xlsx':
-            return jsonToXlsx(jsonData, schema);
+            return jsonToXlsx(jsonData, schema, fileName);
         case 'txt':
             return jsonToTxt(jsonData, schema);
         case 'json':
@@ -153,7 +159,7 @@ function jsonToYaml<T>(jsonData: any, schema: any) {
     return { success: true, fileData: yamlData };
 }
 
-function jsonToXml<T>(jsonData: any, schema: any) {
+function jsonToXml<T>(jsonData: any, schema: any, rootName: string) {
     const parseData = parseWithSchema(schema, jsonData);
     if (!parseData.success) {
         const formattedErrors = formatErrors(parseData.errors);
@@ -162,13 +168,12 @@ function jsonToXml<T>(jsonData: any, schema: any) {
     }
 
     const { data } = parseData;
-    const builder = new Builder();
-    const xmlData = builder.buildObject(data);
+    const xmlData = XmlBuilder(data, rootName);
 
     return { success: true, fileData: xmlData };
 }
 
-function jsonToXlsx<T>(jsonData: any, schema: any) {
+function jsonToXlsx<T>(jsonData: any, schema: any, rootName: string) {
     const parseData = parseWithSchema(schema, jsonData);
     if (!parseData.success) {
         const formattedErrors = formatErrors(parseData.errors);
@@ -270,4 +275,173 @@ function formatComplexValue(value: any): string {
     }
 }
 
+function stringify(obj: any, indentLevel: number = 0): string {
+    const indent = ' '.repeat(indentLevel * 2);
+    let yamlStr = '';
+
+    if (obj === null) {
+        return 'null\n';
+    }
+
+    if (Array.isArray(obj)) {
+        for (const item of obj) {
+            if (typeof item === 'object' && item !== null) {
+                yamlStr += `${indent}- ${stringify(item, indentLevel + 1).trim()}\n`;
+            } else {
+                yamlStr += `${indent}- ${formatPrimitive(item)}\n`;
+            }
+        }
+    } else if (typeof obj === 'object' && obj !== null) {
+        for (const key in obj) {
+            const value = obj[key];
+            if (typeof value === 'object' && value !== null) {
+                yamlStr += `${indent}${key}:\n${stringify(value, indentLevel + 1)}`;
+            } else {
+                yamlStr += `${indent}${key}: ${formatPrimitive(value)}\n`;
+            }
+        }
+    } else {
+        yamlStr += `${indent}${formatPrimitive(obj)}\n`;
+    }
+
+    return yamlStr;
+}
+
+function formatPrimitive(value: any): string {
+    if (typeof value === 'string') {
+        if (isMultilineString(value)) {
+            return `|\n  ${value.split('\n').join('\n  ')}`;
+        }
+        return value.includes(':') || value.includes('"') || value.includes("'") || value.includes('\n')
+            ? `"${value.replace(/"/g, '\\"')}"`
+            : value;
+    } else if (typeof value === 'number') {
+        return value.toString();
+    } else if (typeof value === 'boolean') {
+        return value ? 'true' : 'false';
+    } else if (value === null) {
+        return 'null';
+    } else {
+        return value.toString();
+    }
+}
+
+function isMultilineString(str: string): boolean {
+    return str.includes('\n');
+}
+
+function XmlBuilder(obj: any, rootElement: string = 'data'): string {
+    function buildXml(obj: any): string {
+        let xml = '';
+
+        if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
+            for (const key in obj) {
+                const value = obj[key];
+
+                if (Array.isArray(value)) {
+                    value.forEach((item) => {
+                        xml += `<${key}>${buildXml(item)}</${key}>`;
+                    });
+                } else if (typeof value === 'object' && value !== null) {
+                    xml += `<${key}>${buildXml(value)}</${key}>`;
+                } else {
+                    xml += `<${key}>${escapeXml(value)}</${key}>`;
+                }
+            }
+        } else if (Array.isArray(obj)) {
+            obj.forEach((item) => {
+                xml += `<item>${escapeXml(item)}</item>`;
+            });
+        } else {
+            xml += escapeXml(obj);
+        }
+
+        return xml;
+    }
+
+    function escapeXml(value: any): string {
+        if (typeof value !== 'string') return String(value);
+        return value
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
+    }
+
+    let xmlResult = '';
+    if (rootElement) {
+        xmlResult += `<${rootElement}>`;
+        xmlResult += buildXml(obj);
+        xmlResult += `</${rootElement}>`;
+    } else {
+        xmlResult += buildXml(obj);
+    }
+
+    return xmlResult.trim();
+}
+
+interface Sheet {
+    [cell: string]: any;
+}
+
+interface Workbook {
+    Sheets: { [sheetName: string]: Sheet };
+    SheetNames: string[];
+}
+
+function write(workbook: Workbook, options: { type: 'buffer' | 'binary' | 'string', bookType: 'xlsx' } = { type: 'buffer', bookType: 'xlsx' }): any {
+    if (options.bookType !== 'xlsx') {
+        throw new Error('Currently, only xlsx format is supported.');
+    }
+
+    const buffer = generateXlsxBuffer(workbook);
+
+    if (options.type === 'buffer') {
+        return buffer;
+    } else if (options.type === 'binary') {
+        return buffer.toString('binary');
+    } else if (options.type === 'string') {
+        return buffer.toString('base64');
+    } else {
+        throw new Error(`Unknown output type: ${options.type}`);
+    }
+}
+
+function generateXlsxBuffer(workbook: Workbook): Buffer {
+    const mockData = 'This is a mock xlsx buffer';
+    return Buffer.from(mockData, 'utf-8');
+}
+
+const utils = {
+    json_to_sheet(jsonData: any[]): Sheet {
+        const sheet: Sheet = {};
+
+        const headers = Object.keys(jsonData[0]);
+        headers.forEach((header, index) => {
+            const cellRef = String.fromCharCode(65 + index) + '1'; // 'A1', 'B1', וכו'
+            sheet[cellRef] = { v: header };
+        });
+
+        jsonData.forEach((row, rowIndex) => {
+            headers.forEach((header, colIndex) => {
+                const cellRef = String.fromCharCode(65 + colIndex) + (rowIndex + 2); // 'A2', 'B2', וכו'
+                sheet[cellRef] = { v: row[header] };
+            });
+        });
+
+        return sheet;
+    },
+
+    book_new(): Workbook {
+        return { Sheets: {}, SheetNames: [] };
+    },
+
+    book_append_sheet(workbook: Workbook, sheet: Sheet, sheetName: string): void {
+        workbook.Sheets[sheetName] = sheet;
+        workbook.SheetNames.push(sheetName);
+    }
+};
+
 export { convertJson };
+
